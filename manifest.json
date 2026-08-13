@@ -1,13 +1,26 @@
 {
+  "id": "/",
   "name": "Pescar.ro",
   "short_name": "Pescar.ro",
   "description": "Aplicație PWA pentru pescarii din România: capturi, vreme, ghid, parteneri și profil.",
+  "lang": "ro",
+  "dir": "ltr",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui",
+    "browser"
+  ],
   "orientation": "portrait",
   "background_color": "#f5fbff",
   "theme_color": "#06325e",
+  "categories": [
+    "sports",
+    "lifestyle",
+    "utilities"
+  ],
   "icons": [
     {
       "src": "assets/icon-192.png",

@@ -2,12 +2,12 @@
 <html lang="ro">
 <head>
     <meta charset="UTF-8">
-    <!-- Meta tag-uri esențiale pentru comportament nativ pe telefon (PWA) -->
+    <!-- Meta tag-uri vitale pentru Safari / iOS / Android (elimină barele negre și adaptează la ecran) -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#ffffff">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <title>PiațaLaTine - Premium</title>
+    <title>PiațaLaTine - Final Edition</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -18,7 +18,7 @@
             --app-bg: #f8fafc; 
             --brand: #059669; 
             --brand-light: #10b981;
-            /* Suport pentru Safe Area pe iPhone/Android moderne */
+            /* Aceste variabile protejează aplicația de 'bretonul' telefoanelor moderne */
             --safe-top: env(safe-area-inset-top, 40px);
             --safe-bottom: env(safe-area-inset-bottom, 20px);
         }
@@ -38,19 +38,19 @@
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
         .glass-header {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             border-bottom: 1px solid rgba(0,0,0,0.05);
-            padding-top: max(1rem, var(--safe-top)); /* Evită camera telefonului */
+            padding-top: max(16px, var(--safe-top)); /* Repară bug-ul cu textul tăiat sus */
         }
         
         .glass-nav {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             border-top: 1px solid rgba(0,0,0,0.05);
-            padding-bottom: max(1rem, var(--safe-bottom)); /* Evită bara de swipe jos */
+            padding-bottom: max(16px, var(--safe-bottom)); /* Repară problema cu bara de swipe de pe iOS */
         }
 
         .view-section {
@@ -64,7 +64,7 @@
         @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        .btn-active:active { transform: scale(0.96); opacity: 0.9; transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1); }
+        .btn-active:active { transform: scale(0.96); opacity: 0.9; transition: transform 0.1s; }
         
         .pref-pill {
             padding: 10px 18px; border-radius: 100px; font-size: 13px; font-weight: 700;
@@ -105,10 +105,9 @@
 
 <div class="app-container" id="app">
     
-    <!-- Notificări -->
     <div id="toastContainer" class="toast-container"></div>
 
-    <!-- Modal Informații -->
+    <!-- MODAL INFORMAȚII -->
     <div id="modal-info" class="modal-overlay" onclick="app.ui.closeModal('modal-info')">
         <div class="modal-content" onclick="event.stopPropagation()">
             <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-8"></div>
@@ -118,7 +117,9 @@
         </div>
     </div>
 
-    <!-- 1. LOGIN -->
+    <!-- ==========================================
+         1. LOGIN / ONBOARDING
+    =========================================== -->
     <section id="view-login" class="view-section active bg-black">
         <img src="https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=1000&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover opacity-50">
         <div class="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent"></div>
@@ -156,8 +157,11 @@
         </div>
     </section>
 
-    <!-- 2. HOME -->
+    <!-- ==========================================
+         2. HOME (FEED)
+    =========================================== -->
     <section id="view-home" class="view-section pb-24">
+        <!-- HEADER FIXAT -->
         <header class="glass-header fixed top-0 w-full max-w-[428px] z-50 px-5 pb-4 flex justify-between items-center">
             <div class="flex flex-col">
                 <h1 class="text-2xl font-black text-emerald-600 tracking-tighter leading-none">PiațaLaTine</h1>
@@ -167,12 +171,10 @@
             </div>
             
             <div class="flex items-center gap-3">
-                <!-- Buton Parteneri B2B -->
                 <button onclick="app.router.navigate('partners')" class="btn-active flex items-center gap-1.5 bg-slate-900 px-4 py-2 rounded-full shadow-lg shadow-slate-900/20">
                     <i data-lucide="gem" class="w-3.5 h-3.5 text-amber-400"></i>
                     <span class="text-[10px] font-black text-white uppercase tracking-wider">Parteneri</span>
                 </button>
-                <!-- Avatar Profil -->
                 <div onclick="app.router.navigate('profile')" class="w-10 h-10 bg-slate-100 rounded-full border border-slate-200 overflow-hidden cursor-pointer btn-active flex items-center justify-center shrink-0">
                     <i data-lucide="user" class="w-5 h-5 text-slate-400 absolute"></i>
                     <img id="ui-header-avatar" src="" class="w-full h-full object-cover relative z-10" style="display: none;">
@@ -180,16 +182,14 @@
             </div>
         </header>
 
-        <main class="flex-1 pt-28 px-5 pb-6">
-            <!-- VIP / PROMO -->
-            <div class="mb-8">
-                <div class="flex justify-between items-end mb-4">
-                    <h2 class="text-xl font-black text-slate-900 tracking-tight">Recomandări Premium</h2>
-                </div>
+        <main class="flex-1 pt-24 px-5 pb-6">
+            <!-- RECOMANDĂRI PREMIUM (ORIZONTAL) -->
+            <div class="mb-8 mt-4">
+                <h2 class="text-xl font-black text-slate-900 tracking-tight mb-4">Recomandări Premium</h2>
                 <div class="flex gap-4 overflow-x-auto no-scrollbar pb-4" id="home-vip-feed"></div>
             </div>
 
-            <!-- FEED PRODUSE -->
+            <!-- PRODUCĂTORI LOCALI -->
             <div class="flex justify-between items-end mb-5">
                 <div>
                     <h2 class="text-2xl font-black text-slate-900 tracking-tight">Producători Locali</h2>
@@ -207,7 +207,9 @@
         </main>
     </section>
 
-    <!-- 3. PARTENERI -->
+    <!-- ==========================================
+         3. PARTENERI B2B
+    =========================================== -->
     <section id="view-partners" class="view-section bg-slate-50 pb-24">
         <header class="glass-header fixed top-0 w-full max-w-[428px] z-50 px-5 pb-4 flex items-center gap-4">
             <button onclick="app.router.back()" class="w-10 h-10 rounded-full flex items-center justify-center bg-white border border-slate-200 text-slate-900 btn-active shrink-0 shadow-sm">
@@ -219,7 +221,7 @@
             </div>
         </header>
 
-        <div class="pt-28 p-5 space-y-4" id="partners-feed"></div>
+        <div class="pt-24 p-5 space-y-4 mt-4" id="partners-feed"></div>
         
         <div id="partners-empty" class="hidden pt-40 px-5 flex flex-col items-center justify-center text-center">
             <div class="w-20 h-20 bg-white shadow-sm border border-slate-100 rounded-full flex items-center justify-center mb-6"><i data-lucide="award" class="w-10 h-10 text-slate-300"></i></div>
@@ -228,9 +230,11 @@
         </div>
     </section>
 
-    <!-- 4. CAUTĂ / FILTRARE -->
+    <!-- ==========================================
+         4. CAUTĂ / FILTRARE
+    =========================================== -->
     <section id="view-search" class="view-section bg-white pb-24">
-        <!-- Fără suprapuneri. Header solid cu input și filtre integrate -->
+        <!-- HEADER INTEGRAT PENTRU CĂUTARE (Fără spații goale) -->
         <header class="glass-header fixed top-0 w-full max-w-[428px] z-50">
             <div class="px-5 pb-4 flex gap-3 items-center">
                 <button onclick="app.router.back()" class="w-11 h-11 rounded-full flex items-center justify-center bg-slate-50 border border-slate-200 text-slate-600 btn-active shrink-0">
@@ -247,11 +251,12 @@
                 <button class="px-5 py-2.5 rounded-full text-sm shrink-0 transition font-bold bg-white text-slate-600 border border-slate-200 shadow-sm" onclick="app.ui.setFilter(this, 'Legume')">Legume</button>
                 <button class="px-5 py-2.5 rounded-full text-sm shrink-0 transition font-bold bg-white text-slate-600 border border-slate-200 shadow-sm" onclick="app.ui.setFilter(this, 'Lactate')">Lactate</button>
                 <button class="px-5 py-2.5 rounded-full text-sm shrink-0 transition font-bold bg-white text-slate-600 border border-slate-200 shadow-sm" onclick="app.ui.setFilter(this, 'Carne')">Carne</button>
-                <button class="px-5 py-2.5 rounded-full text-sm shrink-0 transition font-bold bg-white text-slate-600 border border-slate-200 shadow-sm" onclick="app.ui.setFilter(this, 'Miere & Diverse')">Miere</button>
+                <button class="px-5 py-2.5 rounded-full text-sm shrink-0 transition font-bold bg-white text-slate-600 border border-slate-200 shadow-sm" onclick="app.ui.setFilter(this, 'Miere & Diverse')">Diverse</button>
             </div>
         </header>
         
-        <div class="pt-40 p-5">
+        <!-- Spațiu calculat ca să pice sub header-ul fix -->
+        <div class="pt-40 p-5 mt-2">
             <div class="grid grid-cols-2 gap-4" id="search-results"></div>
             <div id="search-empty" class="hidden text-center py-20">
                 <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6"><i data-lucide="search-x" class="w-10 h-10 text-slate-300"></i></div>
@@ -261,18 +266,22 @@
         </div>
     </section>
 
-    <!-- 5. DETALII PRODUS -->
+    <!-- ==========================================
+         5. DETALII PRODUS
+    =========================================== -->
     <section id="view-product" class="view-section bg-slate-50 pb-24 z-30">
         <div id="product-detail-container" class="w-full"></div>
     </section>
 
-    <!-- 6. ADAUGĂ ANUNȚ (VINDE) -->
+    <!-- ==========================================
+         6. ADAUGĂ ANUNȚ
+    =========================================== -->
     <section id="view-sell" class="view-section bg-white pb-32">
         <header class="glass-header fixed top-0 w-full max-w-[428px] z-50 pb-4 px-5 flex items-center justify-center">
             <h1 class="font-black text-xl text-slate-900 tracking-tight">Adaugă Anunț</h1>
         </header>
 
-        <div class="pt-24 p-5 space-y-6">
+        <div class="pt-20 p-5 space-y-6 mt-4">
             <div class="bg-slate-50 p-5 rounded-3xl border border-slate-100 space-y-4">
                 <div>
                     <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Ce vinzi?</label>
@@ -306,11 +315,9 @@
                 </div>
             </div>
 
-            <!-- OPȚIUNI PROMOVARE PREMIUM -->
             <div>
                 <h3 class="font-black text-lg text-slate-900 mb-3 tracking-tight">Obține mai mulți clienți</h3>
                 <div class="space-y-4">
-                    <!-- PROMOVAT CARD -->
                     <label class="relative block rounded-3xl p-[2px] gold-grad cursor-pointer transition transform active:scale-[0.98]">
                         <input type="radio" name="promo" value="promovat" class="peer sr-only" checked>
                         <div class="bg-white rounded-[22px] p-5 h-full peer-checked:bg-amber-50 transition">
@@ -321,13 +328,10 @@
                                 </div>
                                 <div class="bg-slate-900 text-white text-xs font-black px-3 py-1.5 rounded-xl shadow-md">15 Lei</div>
                             </div>
-                            <div class="w-6 h-6 rounded-full border-2 border-slate-300 absolute bottom-5 right-5 flex items-center justify-center peer-checked:bg-amber-500 peer-checked:border-amber-500 transition">
-                                <i data-lucide="check" class="w-4 h-4 text-white opacity-0 peer-checked:opacity-100"></i>
-                            </div>
+                            <div class="w-6 h-6 rounded-full border-2 border-slate-300 absolute bottom-5 right-5 flex items-center justify-center peer-checked:bg-amber-500 peer-checked:border-amber-500 transition"><i data-lucide="check" class="w-4 h-4 text-white opacity-0 peer-checked:opacity-100"></i></div>
                         </div>
                     </label>
 
-                    <!-- STANDARD CARD -->
                     <label class="relative block rounded-3xl border-2 border-slate-200 bg-white p-5 cursor-pointer transition transform active:scale-[0.98]">
                         <input type="radio" name="promo" value="standard" class="peer sr-only">
                         <div class="flex justify-between items-start mb-2">
@@ -337,9 +341,7 @@
                             </div>
                             <div class="bg-slate-100 text-slate-500 text-xs font-bold px-3 py-1.5 rounded-xl">Gratuit</div>
                         </div>
-                        <div class="w-6 h-6 rounded-full border-2 border-slate-300 absolute bottom-5 right-5 flex items-center justify-center peer-checked:bg-slate-800 peer-checked:border-slate-800 transition">
-                            <i data-lucide="check" class="w-4 h-4 text-white opacity-0 peer-checked:opacity-100"></i>
-                        </div>
+                        <div class="w-6 h-6 rounded-full border-2 border-slate-300 absolute bottom-5 right-5 flex items-center justify-center peer-checked:bg-slate-800 peer-checked:border-slate-800 transition"><i data-lucide="check" class="w-4 h-4 text-white opacity-0 peer-checked:opacity-100"></i></div>
                     </label>
                 </div>
             </div>
@@ -350,12 +352,14 @@
         </div>
     </section>
 
-    <!-- 7 & 8. MESAJE & CHAT -->
+    <!-- ==========================================
+         7. MESAJE & 8. CHAT
+    =========================================== -->
     <section id="view-messages" class="view-section bg-white pb-32">
         <header class="glass-header fixed top-0 w-full max-w-[428px] z-20 px-5 pb-4">
             <h1 class="font-black text-2xl text-slate-900 tracking-tight">Mesaje</h1>
         </header>
-        <div id="messages-list" class="pt-24 divide-y divide-slate-50"></div>
+        <div id="messages-list" class="pt-24 mt-4 divide-y divide-slate-50"></div>
     </section>
 
     <section id="view-chat" class="view-section bg-slate-50 z-30">
@@ -373,31 +377,27 @@
         <footer class="glass-nav fixed bottom-0 w-full max-w-[428px] p-4">
             <div class="flex items-center gap-3 bg-slate-100 rounded-full p-1.5 pl-5 pr-1.5 border border-slate-200/50">
                 <input type="text" id="chat-input" placeholder="Mesaj..." class="flex-1 bg-transparent border-none outline-none text-sm font-bold text-slate-900" onkeypress="if(event.key === 'Enter') app.actions.sendMessage()">
-                <button onclick="app.actions.sendMessage()" class="w-10 h-10 bg-slate-900 text-white rounded-full flex items-center justify-center btn-active shrink-0 shadow-md">
-                    <i data-lucide="arrow-up" class="w-5 h-5"></i>
-                </button>
+                <button onclick="app.actions.sendMessage()" class="w-10 h-10 bg-slate-900 text-white rounded-full flex items-center justify-center btn-active shrink-0 shadow-md"><i data-lucide="arrow-up" class="w-5 h-5"></i></button>
             </div>
         </footer>
     </section>
 
-    <!-- 9. PROFIL (Contul Meu) -->
+    <!-- ==========================================
+         9. PROFIL & 10. EDITARE PROFIL
+    =========================================== -->
     <section id="view-profile" class="view-section bg-slate-50 pb-32">
         <header class="glass-header fixed top-0 w-full max-w-[428px] z-20 px-5 pb-4 flex justify-between items-center">
             <h1 class="text-2xl font-black text-slate-900 tracking-tight">Profil</h1>
-            <button onclick="app.router.navigate('settings')" class="w-10 h-10 rounded-full flex items-center justify-center bg-white text-slate-900 btn-active shadow-sm border border-slate-200">
-                <i data-lucide="settings" class="w-5 h-5"></i>
-            </button>
+            <button onclick="app.router.navigate('settings')" class="w-10 h-10 rounded-full flex items-center justify-center bg-white text-slate-900 btn-active shadow-sm border border-slate-200"><i data-lucide="settings" class="w-5 h-5"></i></button>
         </header>
-        <div class="pt-24 p-5">
+        <div class="pt-24 mt-4 p-5">
             <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 text-center">
                 <div class="w-24 h-24 mx-auto bg-emerald-100 border-4 border-white shadow-lg rounded-full overflow-hidden flex items-center justify-center text-emerald-600 relative mb-4">
                     <i data-lucide="user" class="w-10 h-10 absolute"></i>
                     <img id="profile-img" src="" class="w-full h-full object-cover relative z-10" style="display: none;">
                 </div>
                 <h2 id="profile-name" class="font-black text-2xl text-slate-900">Nume</h2>
-                <p class="text-xs text-slate-500 font-bold flex items-center justify-center gap-1 mt-1 uppercase tracking-wider">
-                    <i data-lucide="map-pin" class="w-3 h-3"></i> <span id="profile-loc">Oraș</span>
-                </p>
+                <p class="text-xs text-slate-500 font-bold flex items-center justify-center gap-1 mt-1 uppercase tracking-wider"><i data-lucide="map-pin" class="w-3 h-3"></i> <span id="profile-loc">Oraș</span></p>
                 <button onclick="app.router.navigate('edit-profile')" class="btn-active w-full py-3 bg-slate-50 hover:bg-slate-100 text-slate-900 font-bold rounded-2xl text-sm mt-6 transition">Editează Datele</button>
             </div>
             
@@ -409,13 +409,12 @@
         </div>
     </section>
 
-    <!-- 10. EDIT PROFILE -->
     <section id="view-edit-profile" class="view-section bg-white z-20 pb-32">
         <header class="glass-header fixed top-0 w-full max-w-[428px] z-20 px-5 pb-4 flex items-center gap-4">
             <button onclick="app.router.back()" class="w-10 h-10 rounded-full flex items-center justify-center bg-white border border-slate-200 text-slate-900 btn-active shrink-0 shadow-sm"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
             <h1 class="font-black text-lg text-slate-900">Editează Profilul</h1>
         </header>
-        <div class="pt-24 p-5 space-y-5">
+        <div class="pt-24 mt-4 p-5 space-y-5">
             <div>
                 <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Nume Complet</label>
                 <input type="text" id="edit-name" class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-900 font-bold focus:outline-none focus:border-emerald-500">
@@ -428,14 +427,16 @@
         </div>
     </section>
 
-    <!-- 11. SETĂRI -->
+    <!-- ==========================================
+         11. SETĂRI
+    =========================================== -->
     <section id="view-settings" class="view-section bg-slate-50 pb-32 z-30">
         <header class="glass-header fixed top-0 w-full max-w-[428px] z-20 px-5 pb-4 flex items-center gap-4">
             <button onclick="app.router.back()" class="w-10 h-10 rounded-full flex items-center justify-center bg-white border border-slate-200 text-slate-900 btn-active shrink-0 shadow-sm"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
             <h1 class="font-black text-xl text-slate-900 tracking-tight">Setări</h1>
         </header>
 
-        <div class="pt-24 p-5 space-y-8">
+        <div class="pt-24 mt-4 p-5 space-y-8">
             <div>
                 <h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2">Informații Aplicație</h3>
                 <div class="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm">
@@ -461,7 +462,7 @@
                     </button>
                 </div>
             </div>
-            <p class="text-center text-[10px] text-slate-300 font-bold tracking-widest uppercase">PWA Definitiv v5.0</p>
+            <p class="text-center text-[10px] text-slate-300 font-bold tracking-widest uppercase">Hollywood Edition v2.0</p>
         </div>
     </section>
 

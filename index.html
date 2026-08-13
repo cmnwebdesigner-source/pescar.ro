@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <!-- Meta tag-uri esențiale pentru comportament nativ pe telefon (PWA) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>PiațaLaTine - Premium</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { 
+            --app-bg: #f8fafc; 
+            --brand: #059669; 
+            --brand-light: #10b981;
+            /* Suport pentru Safe Area pe iPhone/Android moderne */
+            --safe-top: env(safe-area-inset-top, 40px);
+            --safe-bottom: env(safe-area-inset-bottom, 20px);
+        }
+        body {
+            font-family: 'Inter', sans-serif; background-color: #000; 
+            -webkit-tap-highlight-color: transparent; margin: 0; padding: 0;
+            overscroll-behavior-y: none; color: #0f172a;
+        }
+        
+        .app-container {
+            max-width: 428px; margin: 0 auto; background-color: var(--app-bg);
+            height: 100vh; height: 100dvh; position: relative; overflow: hidden;
+            display: flex; flex-direction: column; box-shadow: 0 0 80px rgba(0,0,0,0.8);
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .glass-header {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            padding-top: max(1rem, var(--safe-top)); /* Evită camera telefonului */
+        }
+        
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-top: 1px solid rgba(0,0,0,0.05);
+            padding-bottom: max(1rem, var(--safe-bottom)); /* Evită bara de swipe jos */
+        }
+
+        .view-section {
+            display: none; flex: 1; flex-direction: column; overflow-y: auto; overflow-x: hidden;
+            background-color: var(--app-bg); position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10;
+        }
+        .view-section.active { display: flex; z-index: 20; }
+        
+        .slide-in { animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .fade-in { animation: fadeIn 0.2s ease-out forwards; }
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .btn-active:active { transform: scale(0.96); opacity: 0.9; transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        .pref-pill {
+            padding: 10px 18px; border-radius: 100px; font-size: 13px; font-weight: 700;
+            background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3);
+            cursor: pointer; transition: all 0.2s; backdrop-filter: blur(10px);
+        }
+        .pref-pill.selected {
+            background-color: var(--brand-light); border-color: var(--brand-light); color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .modal-overlay {
+            position: absolute; inset: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px);
+            z-index: 100; display: none; flex-direction: column; justify-content: flex-end; opacity: 0; transition: opacity 0.3s;
+        }
+        .modal-overlay.active { display: flex; opacity: 1; }
+        .modal-content {
+            background: white; border-radius: 32px 32px 0 0; padding: 24px; padding-bottom: max(24px, var(--safe-bottom));
+            transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); max-height: 85vh; overflow-y: auto;
+        }
+        .modal-overlay.active .modal-content { transform: translateY(0); }
+
+        .toast-container { position: absolute; top: max(16px, var(--safe-top)); left: 16px; right: 16px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+        .toast {
+            background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); color: white; padding: 16px; border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 12px;
+            animation: slideDownToast 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; border: 1px solid rgba(255,255,255,0.1);
+        }
+        @keyframes slideDownToast { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .toast.hiding { animation: fadeOutToast 0.3s ease forwards; }
+        @keyframes fadeOutToast { to { opacity: 0; transform: translateY(-20px); } }
+
+        .gold-grad { background: linear-gradient(135deg, #FDE047 0%, #D97706 100%); }
+        .gold-text { background: linear-gradient(135deg, #FBBF24 0%, #B45309 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    </style>
+</head>
+<body>
+
+<div class="app-container" id="app">
+    
+    <!-- Notificări -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Modal Informații -->
+    <div id="modal-info" class="modal-overlay" onclick="app.ui.closeModal('modal-info')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-8"></div>
+            <h2 id="modal-info-title" class="text-3xl font-black text-slate-900 mb-6 tracking-tight">Titlu</h2>
+            <div id="modal-info-body" class="text-sm text-slate-600 space-y-4 font-medium leading-relaxed"></div>
+            <button onclick="app.ui.closeModal('modal-info')" class="btn-active w-full mt-10 bg-slate-900 text-white font-bold py-4 rounded-2xl shadow-xl shadow-slate-900/20">Am înțeles</button>
+        </div>
+    </div>
+
+    <!-- 1. LOGIN -->
+    <section id="view-login" class="view-section active bg-black">
+        <img src="https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=1000&auto=format&fit=crop" class="absolute inset-0 w-full h-full object-cover opacity-50">
+        <div class="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent"></div>
+
+        <div class="relative z-10 flex-1 overflow-y-auto no-scrollbar px-6 flex flex-col justify-end" style="padding-top: var(--safe-top); padding-bottom: max(30px, var(--safe-bottom));">
+            <h1 class="text-5xl font-black text-white tracking-tighter leading-none mb-3">Piața<span class="text-emerald-400">LaTine</span></h1>
+            <p class="text-slate-300 font-medium text-sm mb-8 leading-relaxed">Conectăm ferma direct cu farfuria ta. Personalizează experiența.</p>
+
+            <div class="space-y-4">
+                <input type="text" id="reg-name" placeholder="Cum te numești?" class="w-full bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-4 text-white placeholder-slate-400 font-bold focus:outline-none focus:border-emerald-400 focus:bg-white/20 transition">
+                
+                <div class="flex gap-4">
+                    <input type="number" id="reg-age" placeholder="Vârstă" class="w-1/3 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-4 text-white placeholder-slate-400 font-bold focus:outline-none focus:border-emerald-400 transition text-center">
+                    <select id="reg-city" class="w-2/3 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-4 text-white font-bold focus:outline-none focus:border-emerald-400 transition appearance-none">
+                        <option value="București & Ilfov" class="text-black">București & Ilfov</option>
+                        <option value="Cluj-Napoca" class="text-black">Cluj-Napoca</option>
+                        <option value="Brașov" class="text-black">Brașov</option>
+                    </select>
+                </div>
+
+                <div class="pt-4">
+                    <label class="block text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-3">Ce bunătăți cauți?</label>
+                    <div id="preferences-container" class="flex flex-wrap gap-2"></div>
+                </div>
+            </div>
+            
+            <div class="mt-8 space-y-3">
+                <button onclick="app.actions.registerUser()" class="btn-active w-full bg-emerald-500 text-white font-black text-lg py-4 rounded-2xl shadow-[0_10px_30px_rgba(16,185,129,0.4)]">
+                    Începe Explorarea
+                </button>
+                <button onclick="app.actions.guestLogin()" class="btn-active w-full bg-white/10 backdrop-blur-md text-white font-bold py-4 rounded-2xl border border-white/10">
+                    Doar în Vizită
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- 2. HOME -->
+    <section id="view-home" class="view-section pb-24">
+        <header class="glass-header fixed top-0 w-full max-w-[428px] z-50 px-5 pb-4 flex justify-between items-center">
+            <div class="flex flex-col">
+                <h1 class="text-2xl font-black text-emerald-600 tracking-tighter leading-none">PiațaLaTine</h1>
+                <p class="text-[10px] font-bold text-slate-500 flex items-center gap-1 mt-1 uppercase tracking-wider">
+                    <i data-lucide="map-pin" class="w-3 h-3 text-slate-400"></i> <span id="ui-location-home">București</span>
+                </p>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <!-- Buton Parteneri B2B -->
+                <button onclick="app.router.navigate('partners')" class="btn-active flex items-center gap-1.5 bg-slate-900 px-4 py-2 rounded-full shadow-lg shadow-slate-900/20">
+                    <i data-lucide="gem" class="w-3.5 h-3.5 text-amber-400"></i>
+                    <span class="text-[10px] font-black text-white uppercase tracking-wider">Parteneri</span>
+                </button>
+                <!-- Avatar Profil -->
+                <div onclick="app.router.navigate('profile')" class="w-10 h-10 bg-slate-100 rounded-full border border-slate-200 overflow-hidden cursor-pointer btn-active flex items-center justify-center shrink-0">
+                    <i data-lucide="user" class="w-5 h-5 text-slate-400 absolute"></i>
+                    <img id="ui-header-avatar" src="" class="w-full h-full object-cover relative z-10" style="display: none;">
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 pt-28 px-5 pb-6">
+            <!-- VIP / PROMO -->
+            <div class="mb-8">
+                <div class="flex justify-between items-end mb-4">
+                    <h2 class="text-xl font-black text-slate-900 tracking-tight">Recomandări Premium</h2>
+                </div>
+                <div class="flex gap-4 overflow-x-auto no-scrollbar pb-4" id="home-vip-feed"></div>
+            </div>
+
+            <!-- FEED PRODUSE -->
+            <div class="flex justify-between items-end mb-5">
+                <div>
+                    <h2 class="text-2xl font-black text-slate-900 tracking-tight">Producători Locali</h2>
+                    <p class="text-xs font-medium text-slate-500 mt-1">Găsește produse proaspete lângă tine.</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4" id="home-feed"></div>
+            
+            <div id="home-empty" class="hidden py-16 flex flex-col items-center justify-center text-center">
+                <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4"><i data-lucide="basket" class="w-10 h-10 text-slate-300"></i></div>
+                <h3 class="text-slate-900 font-bold text-lg mb-1">Fără producători momentan</h3>
+                <p class="text-sm text-slate-500 font-medium">Extindem rețeaua în curând.</p>
+            </div>
+        </main>
+    </section>
+
+    <!-- 3. PARTENERI -->
+    <section id="view-partners" class="view-section bg-slate-50 pb-24">
+        <header class="glass-header fixed top-0 w-full max-w-[428px] z-50 px-5 pb-4 flex items-center gap-4">
+            <button onclick="app.router.back()" class="w-10 h-10 rounded-full flex items-center justify-center bg-white border border-slate-200 text-slate-900 btn-active shrink-0 shadow-sm">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+            </button>
+            <div>
+                <h1 class="text-xl font-black text-slate-900 tracking-tight leading-none flex items-center gap-2">Parteneri <i data-lucide="gem" class="w-4 h-4 text-amber-500 fill-amber-500"></i></h1>
+                <p class="text-[10px] font-bold text-emerald-600 mt-1 uppercase tracking-wider">Locații care ne susțin</p>
+            </div>
+        </header>
+
+        <div class="pt-28 p-5 space-y-4" id="partners-feed"></div>
+        
+        <div id="partners-empty" class="hidden pt-40 px-5 flex flex-col items-center justify-center text-center">
+            <div class="w-20 h-20 bg-white shadow-sm border border-slate-100 rounded-full flex items-center justify-center mb-6"><i data-lucide="award" class="w-10 h-10 text-slate-300"></i></div>
+            <h3 class="text-slate-900 font-bold text-lg mb-2">Devino Primul Partener!</h3>
+            <p class="text-sm text-slate-500 font-medium leading-relaxed">Nu avem încă băcănii sau restaurante partenere în acest oraș.</p>
+        </div>
+    </section>
+
+    <!-- 4. CAUTĂ / FILTRARE -->
+    <section id="view-search" class="view-section bg-white pb-24">
+        <!-- Fără suprapuneri. Header solid cu input și filtre integrate -->
+        <header class="glass-header fixed top-0 w-full max-w-[428px] z-50">
+            <div class="px-5 pb-4 flex gap-3 items-center">
+                <button onclick="app.router.back()" class="w-11 h-11 rounded-full flex items-center justify-center bg-slate-50 border border-slate-200 text-slate-600 btn-active shrink-0">
+                    <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                </button>
+                <div class="relative flex-1">
+                    <i data-lucide="search" class="absolute left-4 top-3.5 w-5 h-5 text-slate-400"></i>
+                    <input type="text" id="searchInput" placeholder="Caută produse..." class="w-full bg-slate-100 text-sm rounded-2xl py-3.5 pl-12 pr-4 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-bold placeholder-slate-400" oninput="app.renderers.search()">
+                </div>
+            </div>
+            
+            <div class="px-5 pb-3 overflow-x-auto no-scrollbar flex gap-2" id="search-filters">
+                <button class="px-5 py-2.5 rounded-full text-xs shrink-0 transition font-black bg-slate-900 text-white shadow-lg shadow-slate-900/20 uppercase tracking-wider" onclick="app.ui.setFilter(this, 'Toate')">Toate</button>
+                <button class="px-5 py-2.5 rounded-full text-sm shrink-0 transition font-bold bg-white text-slate-600 border border-slate-200 shadow-sm" onclick="app.ui.setFilter(this, 'Legume')">Legume</button>
+                <button class="px-5 py-2.5 rounded-full text-sm shrink-0 transition font-bold bg-white text-slate-600 border border-slate-200 shadow-sm" onclick="app.ui.setFilter(this, 'Lactate')">Lactate</button>
+                <button class="px-5 py-2.5 rounded-full text-sm shrink-0 transition font-bold bg-white text-slate-600 border border-slate-200 shadow-sm" onclick="app.ui.setFilter(this, 'Carne')">Carne</button>
+                <button class="px-5 py-2.5 rounded-full text-sm shrink-0 transition font-bold bg-white text-slate-600 border border-slate-200 shadow-sm" onclick="app.ui.setFilter(this, 'Miere & Diverse')">Miere</button>
+            </div>
+        </header>
+        
+        <div class="pt-40 p-5">
+            <div class="grid grid-cols-2 gap-4" id="search-results"></div>
+            <div id="search-empty" class="hidden text-center py-20">
+                <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6"><i data-lucide="search-x" class="w-10 h-10 text-slate-300"></i></div>
+                <h3 class="text-slate-900 font-black text-lg mb-2">Fără rezultate</h3>
+                <p class="text-slate-500 text-sm font-medium">Încearcă alte cuvinte cheie.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 5. DETALII PRODUS -->
+    <section id="view-product" class="view-section bg-slate-50 pb-24 z-30">
+        <div id="product-detail-container" class="w-full"></div>
+    </section>
+
+    <!-- 6. ADAUGĂ ANUNȚ (VINDE) -->
+    <section id="view-sell" class="view-section bg-white pb-32">
+        <header class="glass-header fixed top-0 w-full max-w-[428px] z-50 pb-4 px-5 flex items-center justify-center">
+            <h1 class="font-black text-xl text-slate-900 tracking-tight">Adaugă Anunț</h1>
+        </header>
+
+        <div class="pt-24 p-5 space-y-6">
+            <div class="bg-slate-50 p-5 rounded-3xl border border-slate-100 space-y-4">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Ce vinzi?</label>
+                    <input type="text" id="sell-title" placeholder="Numele produsului" class="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 text-slate-900 font-black focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition shadow-sm">
+                </div>
+                
+                <div class="flex gap-4">
+                    <div class="w-1/2">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Preț (Lei)</label>
+                        <input type="number" id="sell-price" placeholder="0" class="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 text-emerald-600 font-black focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition text-center shadow-sm">
+                    </div>
+                    <div class="w-1/2">
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Unitate</label>
+                        <select id="sell-unit" class="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 text-slate-900 font-bold focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 appearance-none shadow-sm">
+                            <option value="kg">per Kg</option>
+                            <option value="buc">per Bucată</option>
+                            <option value="litru">per Litru</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Categorie</label>
+                    <select id="sell-cat" class="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 text-slate-900 font-bold focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 appearance-none shadow-sm">
+                        <option>Legume</option>
+                        <option>Fructe</option>
+                        <option>Lactate</option>
+                        <option>Carne</option>
+                        <option>Miere & Diverse</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- OPȚIUNI PROMOVARE PREMIUM -->
+            <div>
+                <h3 class="font-black text-lg text-slate-900 mb-3 tracking-tight">Obține mai mulți clienți</h3>
+                <div class="space-y-4">
+                    <!-- PROMOVAT CARD -->
+                    <label class="relative block rounded-3xl p-[2px] gold-grad cursor-pointer transition transform active:scale-[0.98]">
+                        <input type="radio" name="promo" value="promovat" class="peer sr-only" checked>
+                        <div class="bg-white rounded-[22px] p-5 h-full peer-checked:bg-amber-50 transition">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <span class="gold-text font-black text-lg tracking-tight flex items-center gap-1"><i data-lucide="crown" class="w-5 h-5 text-amber-500"></i> PROMOVAT</span>
+                                    <p class="text-xs text-amber-700/80 font-bold mt-1">Listat primul în rezultate.</p>
+                                </div>
+                                <div class="bg-slate-900 text-white text-xs font-black px-3 py-1.5 rounded-xl shadow-md">15 Lei</div>
+                            </div>
+                            <div class="w-6 h-6 rounded-full border-2 border-slate-300 absolute bottom-5 right-5 flex items-center justify-center peer-checked:bg-amber-500 peer-checked:border-amber-500 transition">
+                                <i data-lucide="check" class="w-4 h-4 text-white opacity-0 peer-checked:opacity-100"></i>
+                            </div>
+                        </div>
+                    </label>
+
+                    <!-- STANDARD CARD -->
+                    <label class="relative block rounded-3xl border-2 border-slate-200 bg-white p-5 cursor-pointer transition transform active:scale-[0.98]">
+                        <input type="radio" name="promo" value="standard" class="peer sr-only">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <span class="font-bold text-slate-700 text-lg tracking-tight">Standard</span>
+                                <p class="text-xs text-slate-500 font-medium mt-1">Listare obișnuită.</p>
+                            </div>
+                            <div class="bg-slate-100 text-slate-500 text-xs font-bold px-3 py-1.5 rounded-xl">Gratuit</div>
+                        </div>
+                        <div class="w-6 h-6 rounded-full border-2 border-slate-300 absolute bottom-5 right-5 flex items-center justify-center peer-checked:bg-slate-800 peer-checked:border-slate-800 transition">
+                            <i data-lucide="check" class="w-4 h-4 text-white opacity-0 peer-checked:opacity-100"></i>
+                        </div>
+                    </label>
+                </div>
+            </div>
+            
+            <button onclick="app.actions.publish()" class="btn-active w-full bg-slate-900 text-white font-black text-lg py-5 rounded-2xl mt-4 shadow-[0_10px_30px_rgba(0,0,0,0.2)]">
+                Publică Anunțul
+            </button>
+        </div>
+    </section>
+
+    <!-- 7 & 8. MESAJE & CHAT -->
+    <section id="view-messages" class="view-section bg-white pb-32">
+        <header class="glass-header fixed top-0 w-full max-w-[428px] z-20 px-5 pb-4">
+            <h1 class="font-black text-2xl text-slate-900 tracking-tight">Mesaje</h1>
+        </header>
+        <div id="messages-list" class="pt-24 divide-y divide-slate-50"></div>
+    </section>
+
+    <section id="view-chat" class="view-section bg-slate-50 z-30">
+        <header class="glass-header fixed top-0 w-full max-w-[428px] z-20 px-5 pb-4 flex items-center gap-4">
+            <button onclick="app.router.back()" class="w-10 h-10 rounded-full flex items-center justify-center bg-white border border-slate-200 text-slate-900 btn-active shrink-0 shadow-sm"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
+            <div class="flex items-center gap-3 flex-1">
+                <div class="w-10 h-10 bg-emerald-100 rounded-full overflow-hidden shrink-0 border border-slate-200"><img id="chat-header-img" src="" class="w-full h-full object-cover"></div>
+                <div>
+                    <h2 id="chat-header-name" class="font-black text-slate-900 text-sm leading-tight">Nume</h2>
+                    <p class="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Online acum</p>
+                </div>
+            </div>
+        </header>
+        <main id="chat-messages-area" class="flex-1 p-5 pt-28 overflow-y-auto flex flex-col gap-4 pb-24"></main>
+        <footer class="glass-nav fixed bottom-0 w-full max-w-[428px] p-4">
+            <div class="flex items-center gap-3 bg-slate-100 rounded-full p-1.5 pl-5 pr-1.5 border border-slate-200/50">
+                <input type="text" id="chat-input" placeholder="Mesaj..." class="flex-1 bg-transparent border-none outline-none text-sm font-bold text-slate-900" onkeypress="if(event.key === 'Enter') app.actions.sendMessage()">
+                <button onclick="app.actions.sendMessage()" class="w-10 h-10 bg-slate-900 text-white rounded-full flex items-center justify-center btn-active shrink-0 shadow-md">
+                    <i data-lucide="arrow-up" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </footer>
+    </section>
+
+    <!-- 9. PROFIL (Contul Meu) -->
+    <section id="view-profile" class="view-section bg-slate-50 pb-32">
+        <header class="glass-header fixed top-0 w-full max-w-[428px] z-20 px-5 pb-4 flex justify-between items-center">
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight">Profil</h1>
+            <button onclick="app.router.navigate('settings')" class="w-10 h-10 rounded-full flex items-center justify-center bg-white text-slate-900 btn-active shadow-sm border border-slate-200">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+            </button>
+        </header>
+        <div class="pt-24 p-5">
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 text-center">
+                <div class="w-24 h-24 mx-auto bg-emerald-100 border-4 border-white shadow-lg rounded-full overflow-hidden flex items-center justify-center text-emerald-600 relative mb-4">
+                    <i data-lucide="user" class="w-10 h-10 absolute"></i>
+                    <img id="profile-img" src="" class="w-full h-full object-cover relative z-10" style="display: none;">
+                </div>
+                <h2 id="profile-name" class="font-black text-2xl text-slate-900">Nume</h2>
+                <p class="text-xs text-slate-500 font-bold flex items-center justify-center gap-1 mt-1 uppercase tracking-wider">
+                    <i data-lucide="map-pin" class="w-3 h-3"></i> <span id="profile-loc">Oraș</span>
+                </p>
+                <button onclick="app.router.navigate('edit-profile')" class="btn-active w-full py-3 bg-slate-50 hover:bg-slate-100 text-slate-900 font-bold rounded-2xl text-sm mt-6 transition">Editează Datele</button>
+            </div>
+            
+            <div class="flex p-1.5 bg-slate-200/50 rounded-2xl mt-6 mb-4">
+                <button onclick="app.ui.switchProfileTab('ads')" id="tab-btn-ads" class="flex-1 py-2.5 rounded-xl font-bold text-sm bg-white shadow-sm text-slate-900 transition">Anunțuri</button>
+                <button onclick="app.ui.switchProfileTab('favs')" id="tab-btn-favs" class="flex-1 py-2.5 rounded-xl font-bold text-sm text-slate-500 transition">Salvate (<span id="count-favs">0</span>)</button>
+            </div>
+            <div id="profile-content-area"></div>
+        </div>
+    </section>
+
+    <!-- 10. EDIT PROFILE -->
+    <section id="view-edit-profile" class="view-section bg-white z-20 pb-32">
+        <header class="glass-header fixed top-0 w-full max-w-[428px] z-20 px-5 pb-4 flex items-center gap-4">
+            <button onclick="app.router.back()" class="w-10 h-10 rounded-full flex items-center justify-center bg-white border border-slate-200 text-slate-900 btn-active shrink-0 shadow-sm"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
+            <h1 class="font-black text-lg text-slate-900">Editează Profilul</h1>
+        </header>
+        <div class="pt-24 p-5 space-y-5">
+            <div>
+                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Nume Complet</label>
+                <input type="text" id="edit-name" class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-900 font-bold focus:outline-none focus:border-emerald-500">
+            </div>
+            <div>
+                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Oraș / Zonă</label>
+                <input type="text" id="edit-loc" class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-900 font-bold focus:outline-none focus:border-emerald-500">
+            </div>
+            <button onclick="app.actions.saveProfile()" class="btn-active w-full bg-slate-900 text-white font-black py-4 rounded-2xl mt-4 shadow-xl shadow-slate-900/20">Salvează Modificările</button>
+        </div>
+    </section>
+
+    <!-- 11. SETĂRI -->
+    <section id="view-settings" class="view-section bg-slate-50 pb-32 z-30">
+        <header class="glass-header fixed top-0 w-full max-w-[428px] z-20 px-5 pb-4 flex items-center gap-4">
+            <button onclick="app.router.back()" class="w-10 h-10 rounded-full flex items-center justify-center bg-white border border-slate-200 text-slate-900 btn-active shrink-0 shadow-sm"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
+            <h1 class="font-black text-xl text-slate-900 tracking-tight">Setări</h1>
+        </header>
+
+        <div class="pt-24 p-5 space-y-8">
+            <div>
+                <h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3 ml-2">Informații Aplicație</h3>
+                <div class="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm">
+                    <button class="w-full flex items-center justify-between p-5 border-b border-slate-50 hover:bg-slate-50 btn-active transition" onclick="app.actions.showTerms()">
+                        <div class="flex items-center gap-4"><div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center"><i data-lucide="file-text" class="w-4 h-4 text-slate-600"></i></div><span class="font-bold text-slate-800 text-sm">Termeni și Condiții</span></div>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300"></i>
+                    </button>
+                    <button class="w-full flex items-center justify-between p-5 hover:bg-slate-50 btn-active transition" onclick="app.actions.showAbout()">
+                        <div class="flex items-center gap-4"><div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center"><i data-lucide="info" class="w-4 h-4 text-slate-600"></i></div><span class="font-bold text-slate-800 text-sm">Despre PiațaLaTine</span></div>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-[11px] font-bold text-rose-400 uppercase tracking-widest mb-3 ml-2">Acțiuni Cont</h3>
+                <div class="bg-white rounded-3xl border border-rose-100 overflow-hidden shadow-sm">
+                    <button onclick="app.actions.logout()" class="w-full flex items-center justify-between p-5 border-b border-rose-50 hover:bg-rose-50 btn-active transition">
+                        <span class="font-bold text-rose-600 text-sm">Deconectare</span><i data-lucide="log-out" class="w-4 h-4 text-rose-400"></i>
+                    </button>
+                    <button onclick="app.actions.deleteAccount()" class="w-full flex items-center justify-between p-5 hover:bg-rose-50 btn-active transition">
+                        <span class="font-black text-rose-600 text-sm">Ștergere Cont Definitiv</span><i data-lucide="trash-2" class="w-4 h-4 text-rose-400"></i>
+                    </button>
+                </div>
+            </div>
+            <p class="text-center text-[10px] text-slate-300 font-bold tracking-widest uppercase">PWA Definitiv v5.0</p>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         BOTTOM TAB BAR (Glassmorphism Nav)
+    =========================================== -->
+    <nav id="bottom-nav" class="glass-nav fixed bottom-0 w-full max-w-[428px] z-40 px-6 py-2 flex justify-between items-center hidden">
+        <button onclick="app.router.navigate('home')" id="nav-home" class="nav-item flex flex-col items-center gap-1 text-slate-400 transition w-16 btn-active">
+            <i data-lucide="layout-grid" class="w-6 h-6 mb-0.5"></i><span class="text-[10px] font-black tracking-wide">Acasă</span>
+        </button>
+        <button onclick="app.router.navigate('search')" id="nav-search" class="nav-item flex flex-col items-center gap-1 text-slate-400 transition w-16 btn-active">
+            <i data-lucide="search" class="w-6 h-6 mb-0.5"></i><span class="text-[10px] font-black tracking-wide">Caută</span>
+        </button>
+        
+        <!-- Buton Vinde Central (Plutitor) -->
+        <button onclick="app.router.navigate('sell')" id="nav-sell" class="flex flex-col items-center justify-center transform -translate-y-6 w-16 btn-active">
+            <div class="bg-slate-900 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-xl shadow-slate-900/30 border-4 border-white"><i data-lucide="plus" class="w-6 h-6"></i></div>
+            <span class="text-slate-600 font-black text-[10px] mt-1 tracking-wide">Vinde</span>
+        </button>
+
+        <button onclick="app.router.navigate('messages')" id="nav-messages" class="nav-item flex flex-col items-center gap-1 text-slate-400 transition w-16 btn-active relative">
+            <i data-lucide="message-square" class="w-6 h-6 mb-0.5"></i>
+            <span class="absolute top-0 right-3 w-2.5 h-2.5 bg-rose-500 border-2 border-white rounded-full"></span>
+            <span class="text-[10px] font-black tracking-wide">Mesaje</span>
+        </button>
+        <button onclick="app.router.navigate('profile')" id="nav-profile" class="nav-item flex flex-col items-center gap-1 text-slate-400 transition w-16 btn-active">
+            <i data-lucide="user" class="w-6 h-6 mb-0.5"></i><span class="text-[10px] font-black tracking-wide">Profil</span>
+        </button>
+    </nav>
+
+</div>
+
+<script>
+// === HIGH-END MOCK DATA (Imagini verificate) ===
+const MOCK_PRODUCTS = [
+    { id: 'p1', title: 'Roșii Inimă de Bou Premium', price: 12, unit: 'kg', cat: 'Legume', loc: 'București & Ilfov', img: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=500&q=80', desc: 'Roșii dulci, crescute în soare. Perfecte pentru salate.', isPromo: true, seller: 'Ferma Vasile', sellerImg: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&q=80', date: 'Azi', rating: 4.9, reviews: 124 },
+    { id: 'p2', title: 'Telemea de oaie maturată', price: 45, unit: 'kg', cat: 'Lactate', loc: 'Brașov', img: 'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=500&q=80', desc: 'Brânză făcută tradițional. Sărată exact cât trebuie.', isPromo: false, seller: 'Stâna Baciului', sellerImg: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&q=80', date: 'Ieri', rating: 4.7, reviews: 89 },
+    { id: 'p3', title: 'Miere de Salcâm Bio', price: 35, unit: 'buc', cat: 'Miere & Diverse', loc: 'București & Ilfov', img: 'https://images.unsplash.com/photo-1587049352847-8d4e89134780?w=500&q=80', desc: 'Miere crudă, nefiltrată.', isPromo: false, seller: 'Apicultor Dan', sellerImg: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80', date: 'Acum 2 ore', rating: 5.0, reviews: 210 },
+    { id: 'p4', title: 'Cutie Vită Angus (5kg)', price: 250, unit: 'buc', cat: 'Carne', loc: 'Cluj-Napoca', img: 'https://images.unsplash.com/photo-1551028719-0c169b1fae33?w=500&q=80', desc: 'Pachet premium pentru grătar.', isPromo: true, seller: 'Ferma Angus', sellerImg: 'https://images.unsplash.com/photo-1543610892-0b1f7e6d8c1c?w=100&q=80', date: 'Acum 1 zi', rating: 4.8, reviews: 45 }
+];
+
+const MOCK_PARTNERS = [
+    { id: 'b1', name: 'Băcănia Boierească', desc: 'Concept store cu produse 100% românești. Punct de ridicare colete.', loc: 'București & Ilfov', type: 'Premium', img: 'https://images.unsplash.com/photo-1534723452862-4c876c29996c?w=400&q=80' },
+    { id: 'b2', name: 'Bistro Tradițional', desc: 'Restaurant partener. Gătim exclusiv cu ingrediente de pe PiațaLaTine.', loc: 'București & Ilfov', type: 'Restaurant', img: 'https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?w=400&q=80' }
+];
+
+const MOCK_CHATS = { 'c1': { id: 'c1', name: 'Ferma Vasile', img: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&q=80', last: 'Livrăm mâine la prima oră.', time: '10:45', messages: [{sender:'other', text:'Salut! Livrăm mâine la prima oră.'}] } };
+const PREFS = ['Legume bio', 'Brânzeturi maturate', 'Carne de țară', 'Miere & Produse apicole', 'Pâine artizanală'];
+
+// === CORE APP LOGIC ===
+const app = {
+    state: { user: null, history: [], products: [...MOCK_PRODUCTS], partners: [...MOCK_PARTNERS], chats: {...MOCK_CHATS}, favorites: ['p1'], currentTab: 'ads', activeChat: null },
+
+    router: {
+        rootViews: ['home', 'search', 'sell', 'messages', 'profile'],
+        navigate: function(viewId, params = {}) {
+            const currentView = document.querySelector('.view-section.active');
+            const targetView = document.getElementById(`view-${viewId}`);
+            if (!targetView) return;
+
+            if (currentView) {
+                const currentId = currentView.id.replace('view-', '');
+                if (!this.rootViews.includes(viewId)) this.state.history.push(currentId);
+                else this.state.history = [];
+            }
+
+            // Hook Renders
+            if(viewId === 'home') app.renderers.home();
+            if(viewId === 'partners') app.renderers.partners();
+            if(viewId === 'search') app.renderers.search();
+            if(viewId === 'product' && params.id) app.renderers.product(params.id);
+            if(viewId === 'messages') app.renderers.messages();
+            if(viewId === 'chat' && params.id) app.renderers.chat(params.id);
+            if(viewId === 'profile') app.renderers.profile();
+            if(viewId === 'edit-profile') app.renderers.editProfile();
+            
+            // Manage Animations
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active', 'slide-in', 'fade-in'));
+            targetView.classList.add('active');
+            if (!this.rootViews.includes(viewId) && viewId !== 'login') targetView.classList.add('slide-in');
+            else targetView.classList.add('fade-in');
+
+            // Bottom Nav Visibility
+            const nav = document.getElementById('bottom-nav');
+            if (this.rootViews.includes(viewId) && viewId !== 'login') {
+                nav.classList.remove('hidden'); app.ui.updateNavStyle(viewId);
+            } else nav.classList.add('hidden');
+            
+            lucide.createIcons();
+            targetView.scrollTop = 0;
+        },
+        back: function() {
+            if (app.state.history.length > 0) this.navigate(app.state.history.pop());
+            else this.navigate('home');
+        }
+    },
+
+    renderers: {
+        home: function() {
+            if(!app.state.user) return;
+            const loc = app.state.user.location;
+            document.getElementById('ui-location-home').innerText = loc;
+            
+            const avatar = document.getElementById('ui-header-avatar');
+            if(app.state.user.isGuest) avatar.style.display = 'none'; 
+            else { avatar.src = `https://api.dicebear.com/7.x/notionists/svg?seed=${app.state.user.name}`; avatar.style.display = 'block'; }
+
+            // VIP Feed (Horizontal)
+            const vips = app.state.products.filter(p => p.isPromo);
+            document.getElementById('home-vip-feed').innerHTML = vips.map(p => `
+                <div class="w-64 h-36 shrink-0 rounded-3xl overflow-hidden relative shadow-md cursor-pointer btn-active border border-slate-100" onclick="app.router.navigate('product', {id: '${p.id}'})">
+                    <img src="${p.img}" class="absolute inset-0 w-full h-full object-cover">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                    <div class="absolute top-3 left-3 gold-grad text-yellow-900 text-[9px] font-black px-2.5 py-1 rounded-lg uppercase tracking-widest shadow-sm">PROMOVAT</div>
+                    <div class="absolute bottom-3 left-3 right-3 text-white">
+                        <h4 class="font-black text-sm leading-tight truncate drop-shadow-md">${p.title}</h4>
+                        <p class="text-[10px] font-bold text-slate-300 truncate drop-shadow-md flex items-center gap-1 mt-0.5"><i data-lucide="user" class="w-3 h-3"></i> ${p.seller}</p>
+                    </div>
+                </div>
+            `).join('');
+
+            // Normal Feed (Grid)
+            const feed = document.getElementById('home-feed');
+            const empty = document.getElementById('home-empty');
+            const filtered = app.state.products.filter(p => p.loc === loc);
+
+            if(filtered.length === 0) { feed.innerHTML = ''; empty.classList.remove('hidden'); } 
+            else { empty.classList.add('hidden'); feed.innerHTML = filtered.map(p => app.ui.createProductCard(p)).join(''); }
+        },
+        partners: function() {
+            const feed = document.getElementById('partners-feed');
+            const empty = document.getElementById('partners-empty');
+            const filtered = app.state.partners.filter(p => p.loc === app.state.user.location);
+
+            if(filtered.length === 0) { feed.innerHTML = ''; empty.classList.remove('hidden'); } 
+            else {
+                empty.classList.add('hidden');
+                feed.innerHTML = filtered.map(p => `
+                    <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-[0_10px_30px_rgba(0,0,0,0.03)] btn-active relative overflow-hidden">
+                        <div class="h-32 w-full absolute top-0 left-0 bg-slate-100"><img src="${p.img}" class="w-full h-full object-cover opacity-30"></div>
+                        <div class="relative z-10 pt-16 flex gap-4">
+                            <div class="w-20 h-20 rounded-2xl overflow-hidden bg-white shadow-lg shrink-0 border-4 border-white"><img src="${p.img}" class="w-full h-full object-cover"></div>
+                            <div class="pt-2">
+                                <span class="text-[9px] font-black text-amber-600 bg-amber-50 uppercase tracking-widest px-2.5 py-1 rounded-lg border border-amber-100">${p.type}</span>
+                                <h3 class="font-black text-slate-900 text-lg mt-1.5 leading-tight">${p.name}</h3>
+                                <p class="text-xs text-slate-500 font-medium mt-1 leading-relaxed">${p.desc}</p>
+                            </div>
+                        </div>
+                    </div>`).join('');
+            }
+        },
+        search: function() {
+            const query = (document.getElementById('searchInput').value || '').toLowerCase();
+            let activeFilter = 'Toate';
+            document.querySelectorAll('#search-filters button').forEach(b => { if(b.classList.contains('bg-slate-900')) activeFilter = b.innerText; });
+            
+            const feed = document.getElementById('search-results');
+            const empty = document.getElementById('search-empty');
+            const filtered = app.state.products.filter(p => {
+                const matchQ = p.title.toLowerCase().includes(query) || p.cat.toLowerCase().includes(query);
+                const matchC = activeFilter === 'Toate' ? true : p.cat === activeFilter;
+                return matchQ && matchC;
+            });
+
+            if(filtered.length === 0) { feed.innerHTML = ''; empty.classList.remove('hidden'); }
+            else { empty.classList.add('hidden'); feed.innerHTML = filtered.map(p => app.ui.createProductCard(p)).join(''); }
+            lucide.createIcons();
+        },
+        product: function(id) {
+            const p = app.state.products.find(x => x.id === id);
+            if(!p) return;
+            const isFav = app.state.favorites.includes(p.id);
+            const favColor = isFav ? 'text-rose-500 fill-rose-500' : 'text-slate-900';
+
+            document.getElementById('product-detail-container').innerHTML = `
+                <div class="relative h-[45vh] w-full bg-slate-200">
+                    <img src="${p.img}" class="w-full h-full object-cover">
+                    <!-- Glass Buttons pe Imagine -->
+                    <div class="absolute top-14 left-0 right-0 px-5 flex justify-between z-10" style="padding-top: var(--safe-top);">
+                        <button onclick="app.router.back()" class="w-11 h-11 rounded-full flex items-center justify-center bg-white/70 backdrop-blur-md text-slate-900 btn-active shadow-sm border border-white/50"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
+                        <button onclick="app.actions.toggleFavorite('${p.id}')" class="w-11 h-11 rounded-full flex items-center justify-center bg-white/70 backdrop-blur-md btn-active shadow-sm border border-white/50">
+                            <i data-lucide="heart" id="detail-fav" class="w-5 h-5 ${favColor}"></i>
+                        </button>
+                    </div>
+                </div>
+                <!-- Content Panel -->
+                <div class="bg-white p-6 rounded-t-[32px] -mt-8 relative z-20 shadow-[0_-15px_30px_rgba(0,0,0,0.1)] pb-10">
+                    <div class="flex justify-between items-start mb-3">
+                        <h1 class="text-3xl font-black text-slate-900 leading-tight tracking-tight w-3/4">${p.title}</h1>
+                        <div class="text-right">
+                            <p class="text-3xl font-black text-emerald-600 tracking-tighter">${p.price}</p>
+                            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Lei / ${p.unit}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 mb-8 text-xs font-bold text-slate-500">
+                        <span class="flex items-center gap-1 text-amber-500"><i data-lucide="star" class="w-4 h-4 fill-amber-500"></i> ${p.rating||'5.0'} (${p.reviews||'0'} recenzii)</span>
+                        <span>•</span>
+                        <span class="flex items-center gap-1"><i data-lucide="map-pin" class="w-3.5 h-3.5"></i> ${p.loc}</span>
+                    </div>
+
+                    <h3 class="text-sm font-black text-slate-900 mb-2 uppercase tracking-wider">Descriere Produs</h3>
+                    <p class="text-sm text-slate-600 font-medium mb-8 leading-relaxed">${p.desc}</p>
+
+                    <div class="flex items-center gap-4 bg-slate-50 p-5 rounded-3xl border border-slate-100 mb-8">
+                        <img src="${p.sellerImg}" class="w-14 h-14 rounded-full object-cover border-2 border-white shadow-sm">
+                        <div class="flex-1">
+                            <p class="font-black text-slate-900 text-base">${p.seller}</p>
+                            <p class="text-[11px] text-emerald-600 font-bold flex items-center gap-1 mt-0.5 uppercase tracking-wider"><i data-lucide="shield-check" class="w-3.5 h-3.5 inline"></i> Producător Verificat</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Premium Sticky Action Bar -->
+                <div class="glass-nav fixed bottom-0 w-full max-w-[428px] p-5 flex gap-3 z-30">
+                    <button onclick="app.ui.toast('Sună vânzătorul','07XX XXX XXX', 'info')" class="flex-1 bg-white border border-slate-200 text-slate-900 font-black py-4 rounded-2xl flex items-center justify-center gap-2 btn-active shadow-sm"><i data-lucide="phone" class="w-5 h-5"></i> Sună</button>
+                    <button onclick="app.actions.openChatFromProduct('${p.id}')" class="flex-1 bg-slate-900 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 btn-active shadow-xl shadow-slate-900/30"><i data-lucide="message-square" class="w-5 h-5"></i> Mesaj</button>
+                </div>
+            `;
+        },
+        messages: function() {
+            document.getElementById('messages-list').innerHTML = Object.values(app.state.chats).map(c => `
+                <div class="p-5 flex items-center gap-4 cursor-pointer btn-active border-b border-slate-50" onclick="app.router.navigate('chat', {id: '${c.id}'})">
+                    <div class="w-14 h-14 bg-slate-100 rounded-full overflow-hidden shrink-0 border border-slate-200"><img src="${c.img}" class="w-full h-full object-cover"></div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-baseline mb-1">
+                            <h3 class="font-bold text-slate-900 text-sm truncate">${c.name}</h3>
+                            <span class="text-[10px] text-slate-400 font-bold tracking-wider">${c.time}</span>
+                        </div>
+                        <p class="text-sm text-slate-500 font-medium truncate">${c.last}</p>
+                    </div>
+                </div>
+            `).join('');
+        },
+        chat: function(id) {
+            const c = app.state.chats[id];
+            if(!c) return;
+            app.state.activeChat = id;
+            document.getElementById('chat-header-name').innerText = c.name;
+            document.getElementById('chat-header-img').src = c.img;
+            
+            const area = document.getElementById('chat-messages-area');
+            area.innerHTML = c.messages.map(m => {
+                const isMe = m.sender === 'me';
+                return `<div class="flex ${isMe ? 'justify-end' : 'justify-start'}">
+                    <div class="max-w-[80%] rounded-[20px] px-5 py-3 text-sm font-medium leading-relaxed ${isMe ? 'bg-slate-900 text-white rounded-tr-sm shadow-md' : 'bg-white border border-slate-200 text-slate-900 rounded-tl-sm shadow-sm'}">${m.text}</div>
+                </div>`;
+            }).join('');
+            area.scrollTop = area.scrollHeight;
+        },
+        profile: function() {
+            const u = app.state.user;
+            document.getElementById('profile-name').innerText = u.name;
+            document.getElementById('profile-loc').innerText = u.location;
+            
+            const img = document.getElementById('profile-img');
+            if(u.isGuest) { img.style.display = 'none'; }
+            else { img.src = `https://api.dicebear.com/7.x/notionists/svg?seed=${u.name}`; img.style.display = 'block'; }
+            
+            document.getElementById('count-favs').innerText = app.state.favorites.length;
+            this.renderProfileTab();
+        },
+        renderProfileTab: function() {
+            const container = document.getElementById('profile-content-area');
+            let items = app.state.currentTab === 'ads' ? app.state.products.filter(p => p.seller === app.state.user.name) : app.state.products.filter(p => app.state.favorites.includes(p.id));
+            if(items.length === 0) container.innerHTML = `<div class="py-10 text-center"><div class="w-12 h-12 bg-slate-100 rounded-full mx-auto mb-3 flex items-center justify-center"><i data-lucide="layers" class="w-5 h-5 text-slate-300"></i></div><p class="text-slate-400 font-bold text-xs uppercase tracking-widest">Niciun produs</p></div>`;
+            else container.innerHTML = `<div class="grid grid-cols-2 gap-4 pb-6">${items.map(p => app.ui.createProductCard(p)).join('')}</div>`;
+            lucide.createIcons();
+        },
+        editProfile: function() {
+            document.getElementById('edit-name').value = app.state.user.name;
+            document.getElementById('edit-loc').value = app.state.user.location;
+        },
+        initPreferences: function() {
+            document.getElementById('preferences-container').innerHTML = PREFS.map(p => `<div class="pref-pill" onclick="this.classList.toggle('selected')">${p}</div>`).join('');
+        }
+    },
+
+    actions: {
+        registerUser: function() {
+            const name = document.getElementById('reg-name').value.trim();
+            const age = document.getElementById('reg-age').value;
+            const city = document.getElementById('reg-city').value;
+            const selectedPrefs = Array.from(document.querySelectorAll('.pref-pill.selected')).map(el => el.innerText);
+
+            if(!name || !city) { app.ui.toast('Eroare', 'Te rugăm să completezi numele.', 'error'); return; }
+
+            app.state.user = { name, age, location: city, prefs: selectedPrefs, isGuest: false };
+            
+            app.ui.toast('Autentificare', 'Aplicația se pregătește...', 'info');
+            setTimeout(() => { app.router.navigate('home'); }, 800);
+        },
+        guestLogin: function() {
+            const city = document.getElementById('reg-city').value;
+            app.state.user = { name: 'Vizitator', age: null, location: city, isGuest: true };
+            app.router.navigate('home');
+        },
+        publish: function() {
+            const title = document.getElementById('sell-title').value;
+            const price = document.getElementById('sell-price').value;
+            if(!title || !price) { app.ui.toast('Incomplet', 'Adaugă titlu și preț.', 'error'); return; }
+            const isPromo = document.querySelector('input[name="promo"]:checked').value === 'promovat';
+            if(isPromo) {
+                app.ui.toast('Procesare Plată', 'Conectare la server securizat...', 'info');
+                setTimeout(() => this.finishPublish(title, price, isPromo), 1500);
+            } else this.finishPublish(title, price, isPromo);
+        },
+        finishPublish: function(title, price, isPromo) {
+            app.state.products.unshift({
+                id: 'p' + Date.now(), title, price, unit: document.getElementById('sell-unit').value, cat: document.getElementById('sell-cat').value,
+                loc: app.state.user.location, img: 'https://images.unsplash.com/photo-1595858619620-8e1e75524b07?w=400&q=80', desc: 'Produs adăugat recent pe platformă.',
+                isPromo, seller: app.state.user.name, sellerImg: `https://api.dicebear.com/7.x/notionists/svg?seed=${app.state.user.name}`, date: 'Acum', rating: 5.0, reviews: 0
+            });
+            document.getElementById('sell-title').value = ''; document.getElementById('sell-price').value = '';
+            app.ui.toast('Succes', 'Anunțul a fost publicat!');
+            app.router.navigate('home');
+        },
+        toggleFavorite: function(id) {
+            const idx = app.state.favorites.indexOf(id);
+            let isAdding = false;
+            if(idx > -1) app.state.favorites.splice(idx, 1);
+            else { app.state.favorites.push(id); isAdding = true; }
+            
+            const icon = document.getElementById('detail-fav');
+            if(icon) {
+                if(isAdding) { icon.classList.add('text-rose-500', 'fill-rose-500'); icon.classList.remove('text-slate-900'); }
+                else { icon.classList.remove('text-rose-500', 'fill-rose-500'); icon.classList.add('text-slate-900'); }
+            }
+            document.querySelectorAll(`.fav-btn-feed[data-id="${id}"]`).forEach(el => {
+                if(isAdding) { el.classList.add('text-rose-500', 'fill-rose-500'); el.classList.remove('text-slate-300'); }
+                else { el.classList.remove('text-rose-500', 'fill-rose-500'); el.classList.add('text-slate-300'); }
+            });
+            app.ui.toast(isAdding ? 'Salvat' : 'Eliminat din salvate', '', 'info');
+        },
+        sendMessage: function() {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if(!text) return;
+            const chat = app.state.chats[app.state.activeChat];
+            chat.messages.push({ sender: 'me', text: text });
+            chat.last = text;
+            app.renderers.chat(app.state.activeChat);
+            input.value = '';
+        },
+        openChatFromProduct: function(prodId) {
+            const p = app.state.products.find(x => x.id === prodId);
+            const chatId = 'c_' + p.seller.replace(/\s/g, '');
+            if(!app.state.chats[chatId]) {
+                app.state.chats[chatId] = { id: chatId, name: p.seller, img: p.sellerImg, last: 'Conversație nouă', time: 'Acum', messages: [] };
+            }
+            app.router.navigate('chat', {id: chatId});
+        },
+        saveProfile: function() {
+            app.state.user.name = document.getElementById('edit-name').value;
+            app.state.user.location = document.getElementById('edit-loc').value;
+            app.ui.toast('Salvat', 'Datele au fost actualizate.');
+            app.router.back();
+        },
+        logout: function() { app.state.user = null; app.router.navigate('login'); app.ui.toast('Deconectat', 'La revedere!', 'info'); },
+        deleteAccount: function() {
+            if(confirm('Atenție: Această acțiune este permanentă. Continui?')) {
+                app.state.user = null; app.router.navigate('login'); app.ui.toast('Cont Șters', 'Datele tale au fost șterse.', 'error');
+            }
+        },
+        showTerms: function() {
+            document.getElementById('modal-info-title').innerText = 'Termeni și Condiții';
+            document.getElementById('modal-info-body').innerHTML = '<p>1. Prin folosirea aplicației te obligi să respecți producătorii locali.</p><p>2. Toate tranzacțiile sunt responsabilitatea utilizatorilor.</p>';
+            app.ui.openModal('modal-info');
+        },
+        showAbout: function() {
+            document.getElementById('modal-info-title').innerText = 'Despre Aplicație';
+            document.getElementById('modal-info-body').innerHTML = '<p>Versiune: Hollywood Edition v2.0</p><p>Tehnologie: PWA / Vanilla JS / Tailwind CSS.</p>';
+            app.ui.openModal('modal-info');
+        }
+    },
+    ui: {
+        updateNavStyle: function(id) {
+            document.querySelectorAll('#bottom-nav .nav-item').forEach(el => { el.classList.remove('text-slate-900'); el.classList.add('text-slate-400'); });
+            const active = document.getElementById(`nav-${id}`);
+            if(active) { active.classList.remove('text-slate-400'); active.classList.add('text-slate-900'); }
+        },
+        createProductCard: function(p) {
+            const isFav = app.state.favorites.includes(p.id);
+            const favColor = isFav ? 'text-rose-500 fill-rose-500' : 'text-slate-300';
+            const tag = p.isPromo ? `<div class="absolute top-2 left-2 gold-grad text-yellow-900 text-[9px] font-black px-2.5 py-1 rounded-lg shadow-sm z-10 uppercase tracking-widest">PROMOVAT</div>` : '';
+            return `<div class="bg-white rounded-3xl overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 flex flex-col relative product-card pb-3 cursor-pointer btn-active transition hover:shadow-lg" onclick="app.router.navigate('product', {id: '${p.id}'})">
+                ${tag}
+                <div class="h-36 w-full relative bg-slate-100 border-b border-slate-50">
+                    <img src="${p.img}" class="absolute inset-0 w-full h-full object-cover">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+                    <button onclick="event.stopPropagation(); app.actions.toggleFavorite('${p.id}')" class="absolute top-2 right-2 w-8 h-8 bg-white/50 backdrop-blur-md rounded-full flex items-center justify-center btn-active z-10 border border-white/30"><i data-lucide="heart" class="fav-btn-feed w-4 h-4 ${favColor}" data-id="${p.id}"></i></button>
+                    <div class="absolute bottom-2 left-2 bg-black/50 backdrop-blur-md text-white text-[9px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1"><i data-lucide="star" class="w-3 h-3 fill-amber-400 text-amber-400"></i> ${p.rating||'5.0'}</div>
+                </div>
+                <div class="px-3 pt-3 flex-1 flex flex-col">
+                    <h3 class="font-black text-slate-900 text-xs leading-tight mb-1.5 line-clamp-2">${p.title}</h3>
+                    <div class="mt-auto flex justify-between items-end">
+                        <span class="font-black text-emerald-600 text-sm tracking-tight">${p.price} <span class="text-[9px] text-slate-400 uppercase tracking-widest">Lei/${p.unit}</span></span>
+                    </div>
+                </div>
+            </div>`;
+        },
+        setFilter: function(btn, cat) {
+            document.querySelectorAll('#search-filters button').forEach(b => {
+                b.className = "px-5 py-2.5 rounded-full text-sm shrink-0 transition font-bold bg-white text-slate-600 border border-slate-200 shadow-sm";
+            });
+            btn.className = "px-5 py-2.5 rounded-full text-xs shrink-0 transition font-black bg-slate-900 text-white shadow-lg shadow-slate-900/20 uppercase tracking-wider";
+            app.renderers.search();
+        },
+        switchProfileTab: function(tab) {
+            app.state.currentTab = tab;
+            document.getElementById('tab-btn-ads').className = "flex-1 py-2.5 rounded-xl font-bold text-sm transition text-slate-500";
+            document.getElementById('tab-btn-favs').className = "flex-1 py-2.5 rounded-xl font-bold text-sm transition text-slate-500";
+            document.getElementById(`tab-btn-${tab}`).className = "flex-1 py-2.5 rounded-xl font-bold text-sm bg-white shadow-md shadow-slate-200/50 text-slate-900 transition";
+            app.renderers.renderProfileTab();
+        },
+        openModal: function(id) { document.getElementById(id).classList.add('active'); },
+        closeModal: function(id) { document.getElementById(id).classList.remove('active'); },
+        toast: function(title, subtitle = '', type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const icon = type === 'success' ? 'check-circle-2' : type === 'error' ? 'alert-triangle' : 'info';
+            const color = type === 'success' ? 'text-emerald-400' : type === 'error' ? 'text-rose-400' : 'text-blue-400';
+            toast.className = 'toast';
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-6 h-6 ${color} shrink-0 mt-0.5"></i>
+                <div><h4 class="font-black text-sm text-white leading-tight tracking-wide">${title}</h4>
+                ${subtitle ? `<p class="text-[11px] text-slate-300 font-medium mt-1 leading-tight">${subtitle}</p>` : ''}</div>`;
+            container.appendChild(toast); lucide.createIcons();
+            setTimeout(() => { toast.classList.add('hiding'); setTimeout(() => toast.remove(), 300); }, 3000);
+        }
+    }
+};
+
+window.addEventListener('DOMContentLoaded', () => {
+    lucide.createIcons();
+    app.renderers.initPreferences();
+    app.router.navigate('login');
+});
+</script>
+</body>
+</html>
